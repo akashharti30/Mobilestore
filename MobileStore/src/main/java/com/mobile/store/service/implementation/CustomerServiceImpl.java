@@ -3,13 +3,13 @@ package com.mobile.store.service.implementation;
 
 
 
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.Collectors;
 
-import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -26,9 +26,7 @@ import com.mobile.store.repository.CustomerOrderRepository;
 import com.mobile.store.repository.CustomerRepository;
 import com.mobile.store.repository.ItemRepository;
 import com.mobile.store.repository.MobileCoverRepository;
-import com.razorpay.Order;
-import com.razorpay.RazorpayClient;
-import com.razorpay.RazorpayException;
+
 
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -272,58 +270,38 @@ public class CustomerServiceImpl implements CustomerService{
 	
 	
 	@Override
-	public String checkout(HttpSession session, ModelMap map) {
-		if (session.getAttribute("customer") != null) {
+    public String checkout(HttpSession session, ModelMap map) {
+        if (session.getAttribute("customer") != null) {
             Customer customer = (Customer) session.getAttribute("customer");
             if (customer.getCart().getItems().isEmpty()) {
                 session.setAttribute("failure", "No Item in Cart");
                 return "redirect:/customer/home";
             } else {
-                RazorpayClient razorpay = null;
-                try {
-                    razorpay = new RazorpayClient(key, secret);
-                } catch (RazorpayException ex) {
+                CustomerOrder order = new CustomerOrder();
+                List<Item> newItems = new ArrayList<>();
+                for (Item item : customer.getCart().getItems()) {
+                    Item newItem = new Item();
+                    newItem.setName(item.getName());
+                    newItem.setPrice(item.getPrice());
+                    newItem.setQuantity(item.getQuantity());
+                    newItem.setMobilebrand(item.getMobilebrand());
+                    newItem.setDescription(item.getDescription());
+                    newItem.setImageLink(item.getImageLink());
+                    newItems.add(newItem);
                 }
 
-                JSONObject orderRequest = new JSONObject();
-                orderRequest.put("amount", customer.getCart().getPrice() * 100);
-                orderRequest.put("currency", "INR");
+                order.setItems(newItems);
+                order.setTotalAmount(customer.getCart().getPrice());
+                order.setCustomer(customer);
+                order.setOrderDateTime(LocalDateTime.now());
+                order.setPaymentId("Pending Payment"); // Placeholder
+                
+                customerOrder.save(order);
 
-                Order order = null;
-                try {
-                    order = razorpay.orders.create(orderRequest);
-                } catch (RazorpayException ex) {
-                }
-
-                map.put("key", key);
                 map.put("totalAmount", customer.getCart().getPrice());
                 map.put("customer", customer);
-                map.put("orderId", order.get("id"));
+                map.put("orderId", order.getId());
                 map.put("cart", customer.getCart());
-
-                              CustomerOrder order1 = new CustomerOrder();
-                              List<Item> newItems = new ArrayList<>();
-                              for (Item item : customer.getCart().getItems()) {
-                                  Item newItem = new Item();
-                                  newItem.setName(item.getName());
-                                  newItem.setPrice(item.getPrice());
-                                  newItem.setQuantity(item.getQuantity());
-                                  newItem.setMobilebrand(item.getMobilebrand());
-                                  newItem.setDescription(item.getDescription());
-                                  newItem.setImageLink(item.getImageLink());
-                                  newItems.add(newItem);
-                              }
-
-                              order1.setItems(newItems);
-                              order1.setTotalAmount(customer.getCart().getPrice());
-                              order1.setOrderId(order.get("id"));
-                              order1.setCustomer(customer);
-
-                              customerOrder.save(order1);            
-
-
-                map.put("id", order1.getId());
-                map.put("customer", customer);
 
                 session.setAttribute("customer", customerRepository.findById(customer.getId()).orElseThrow());
                 return "booking-confirmation-page.html";
@@ -332,29 +310,31 @@ public class CustomerServiceImpl implements CustomerService{
             session.setAttribute("failure", "Invalid Session, Login Again");
             return "redirect:/login";
         }
-	}
+    }
 
-	@Override
-	public String confirmOrder(HttpSession session, int id, String razorpay_payment_id) {
-		if (session.getAttribute("customer") != null) {
+    @Override
+    public String confirmOrder(HttpSession session, int id) {
+        if (session.getAttribute("customer") != null) {
             Customer customer = (Customer) session.getAttribute("customer");
-
-            List<Integer> itemIds = customer.getCart().getItems().stream().mapToInt(x->x.getId()).boxed().collect(Collectors.toList());
+            List<Integer> itemIds = customer.getCart().getItems().stream().mapToInt(Item::getId).boxed().collect(Collectors.toList());
             customer.getCart().getItems().clear();
             customerRepository.save(customer);
             itemRepository.deleteAllById(itemIds);
 
             CustomerOrder order = customerOrder.findById(id).orElseThrow();
             order.setOrderDateTime(LocalDateTime.now());
-            order.setPaymentId(razorpay_payment_id);
+            order.setPaymentId("Paid - Cash on Delivery"); // Marking as paid via COD
             customerOrder.save(order);
+            
             session.setAttribute("success", "Order Placed Successfully");
             return "redirect:/customer/home";
-        }else {
+        } else {
             session.setAttribute("failure", "Invalid Session, Login Again");
             return "redirect:/login";
         }
-	}
+    }
+	
+	
 
 	@Override
 	public String viewOrders(HttpSession session, ModelMap map) {

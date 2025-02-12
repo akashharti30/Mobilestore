@@ -85,9 +85,9 @@ public class CustomerController {
 		return customerService.checkout(session,map);
 	}
 	
-	@PostMapping("/confirm-order/{id}")
-	public String confirmOrder(HttpSession session,@PathVariable int id,@RequestParam String razorpay_payment_id) {
-		return customerService.confirmOrder(session,id,razorpay_payment_id);
+	@GetMapping("/confirm-order/{id}")
+	public String confirmOrder(HttpSession session,@PathVariable int id) {
+		return customerService.confirmOrder(session,id);
 	}
 	
 	@GetMapping("/orders")
