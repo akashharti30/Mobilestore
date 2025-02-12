@@ -269,31 +269,6 @@ public class CustomerServiceImpl implements CustomerService{
             return "redirect:/login";
         }
 	}
-
-
-//	@Override
-//	public String addToCartItem(HttpSession session, int id) {
-//		if(session.getAttribute("customer")!=null) {
-//			Item item=itemRepository.findById(id).orElseThrow();
-//			MobileCover mobilecover=mobileCoverRepository.findByName(item.getName());
-//			return addToCart(session, mobilecover.getId());
-//		}else {
-//            session.setAttribute("failure", "Invalid Session, Login Again");
-//            return "redirect:/login";
-//        }
-//	}
-//
-//	@Override
-//	public String removeFromCartItem(HttpSession session, int id) {
-//		if(session.getAttribute("customer")!=null) {
-//			Item item=itemRepository.findById(id).orElseThrow();
-//			MobileCover mobilecover=mobileCoverRepository.findByName(item.getName());
-//			return removeFromCart(session, mobilecover.getId());
-//		}else {
-//            session.setAttribute("failure", "Invalid Session, Login Again");
-//            return "redirect:/login";
-//        }
-//	}
 	
 	
 	@Override
@@ -443,15 +418,11 @@ public class CustomerServiceImpl implements CustomerService{
 	            session.setAttribute("failure", "No Products Found");
 	            return "redirect:/customer/home";
 	        } else {
-	            // Extract unique mobile brands
 	            List<String> mobileBrands = mobileCover.stream()
 	                .map(MobileCover::getMobilebrand)
 	                .distinct()
 	                .collect(Collectors.toList());
 
-//	            Customer customer = (Customer) session.getAttribute("customer");
-//	            map.put("items", customer.getCart().getItems());
-//	            map.put("mobileCover", mobileCover);
 	            map.put("mobileBrands", mobileBrands); // Add to the map
 
 	            return "customer-mobilebrands.html";
